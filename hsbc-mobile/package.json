@@ -1,0 +1,26 @@
+{
+  "name": "hsbc-mobile",
+  "version": "1.0.4",
+  "main": "index.js",
+  "dependencies": {
+    "expo": "~57.0.27",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-webview": "13.16.1"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "prebuild:android": "expo prebuild --platform android --clean",
+    "icons:android": "node scripts/build-icon-assets.cjs && node scripts/regenerate-android-icons.cjs",
+    "build:apk:local": "expo run:android --variant release",
+    "build:apk": "eas build --platform android --profile preview --non-interactive"
+  },
+  "devDependencies": {
+    "eas-cli": "^16.0.0"
+  },
+  "private": true
+}
