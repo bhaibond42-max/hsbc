@@ -1,0 +1,11 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "nationality" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "marital_status" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "employer_name" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "job_title" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "work_email" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "work_phone" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "work_address_line" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "work_city" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "work_postcode" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "employment_status" TEXT;

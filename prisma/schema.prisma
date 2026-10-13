@@ -1,0 +1,419 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon on Vercel sets POSTGRES_URL_NON_POOLING; local dev uses DIRECT_URL in .env
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  LOCKED
+}
+
+enum AccountType {
+  CURRENT
+  SAVINGS
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+  REVERSED
+}
+
+enum NotificationType {
+  INFO
+  TRANSACTION
+  SECURITY
+  STATEMENT
+}
+
+enum Portal {
+  USER
+  ADMIN
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_SUSPENDED
+  USER_ACTIVATED
+  USER_LOCKED
+  USER_UNLOCKED
+  BALANCE_CREDITED
+  BALANCE_DEBITED
+  TRANSACTION_CREATED
+  TRANSACTION_UPDATED
+  TRANSACTION_REVERSED
+  ACCOUNT_SUSPENDED
+  ACCOUNT_ACTIVATED
+  PASSWORD_RESET
+  PASSWORD_CHANGED
+  NOTIFICATION_SENT
+  ADMIN_2FA_ENABLED
+  ADMIN_2FA_DISABLED
+  PAYMENT_CREATED
+  TRANSFER_CREATED
+  CARD_FROZEN
+  CARD_UNFROZEN
+}
+
+enum ScheduleFrequency {
+  WEEKLY
+  MONTHLY
+}
+
+model User {
+  id               String     @id @default(uuid()) @db.Uuid
+  fullName         String     @map("full_name")
+  email            String     @unique
+  phone            String?
+  dateOfBirth      DateTime?  @map("date_of_birth") @db.Date
+  addressLine      String?    @map("address_line")
+  city             String?
+  postcode         String?
+  occupation       String?
+  nationality      String?
+  maritalStatus    String?    @map("marital_status")
+  employerName     String?    @map("employer_name")
+  jobTitle         String?    @map("job_title")
+  workEmail        String?    @map("work_email")
+  workPhone        String?    @map("work_phone")
+  workAddressLine  String?    @map("work_address_line")
+  workCity         String?    @map("work_city")
+  workPostcode     String?    @map("work_postcode")
+  employmentStatus String?    @map("employment_status")
+  passwordHash     String     @map("password_hash")
+  role             Role       @default(USER)
+  status           UserStatus @default(ACTIVE)
+  profileImage     String?    @map("profile_image")
+  twoFactorEnabled Boolean    @default(false) @map("two_factor_enabled")
+  twoFactorSecret  String?    @map("two_factor_secret")
+  hideBalances     Boolean    @default(true) @map("hide_balances")
+  balancePinHash  String?    @map("balance_pin_hash")
+  loginPinHash    String?    @map("login_pin_hash")
+  notifyTransactions Boolean  @default(true) @map("notify_transactions")
+  notifyStatements Boolean    @default(true) @map("notify_statements")
+  onlinePaymentLimit Decimal  @default(25000) @map("online_payment_limit") @db.Decimal(14, 2)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  lastLoginAt      DateTime?  @map("last_login_at")
+
+  accounts            Account[]
+  sessions            Session[]
+  notifications       Notification[]
+  passwordResetTokens PasswordResetToken[]
+  payees              Payee[]
+  scheduledPayments   ScheduledPayment[]
+  directDebits        DirectDebit[]
+  savingsGoals        SavingsGoal[]
+  adminActions        AdminAction[]        @relation("AdminActionAdmin")
+  adminActionsTarget  AdminAction[]        @relation("AdminActionTarget")
+  auditLogs           AuditLog[]
+  loginOtpChallenges  LoginOtpChallenge[]
+  loginPinChallenges  LoginPinChallenge[]
+  loginMonitorEvents  LoginMonitorEvent[]
+  createdTransactions Transaction[]        @relation("TransactionCreatedBy")
+  updatedTransactions Transaction[]        @relation("TransactionUpdatedBy")
+
+  @@index([role, status])
+  @@map("users")
+}
+
+model LoginOtpChallenge {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("login_otp_challenges")
+}
+
+model LoginPinChallenge {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  remember  Boolean  @default(false)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("login_pin_challenges")
+}
+
+model Account {
+  id               String        @id @default(uuid()) @db.Uuid
+  userId           String        @map("user_id") @db.Uuid
+  name             String
+  accountNumber    String        @unique @map("account_number")
+  sortCode         String        @map("sort_code")
+  accountType      AccountType   @map("account_type")
+  currency         String        @default("GBP")
+  availableBalance Decimal       @default(0) @map("available_balance") @db.Decimal(14, 2)
+  currentBalance   Decimal       @default(0) @map("current_balance") @db.Decimal(14, 2)
+  status           AccountStatus @default(ACTIVE)
+  cardLast4           String?       @map("card_last4")
+  cardFrozen          Boolean       @default(false) @map("card_frozen")
+  contactlessEnabled  Boolean       @default(true) @map("contactless_enabled")
+  onlineEnabled       Boolean       @default(true) @map("online_enabled")
+  atmEnabled          Boolean       @default(true) @map("atm_enabled")
+  dailyLimit          Decimal       @default(500) @map("daily_limit") @db.Decimal(14, 2)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  directDebits DirectDebit[]
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Transaction {
+  id              String            @id @default(uuid()) @db.Uuid
+  accountId       String            @map("account_id") @db.Uuid
+  reference       String            @unique
+  type            TransactionType
+  category        String
+  description     String
+  merchant        String?
+  notes           String?
+  amount          Decimal           @db.Decimal(14, 2)
+  currency        String            @default("GBP")
+  balanceAfter    Decimal           @map("balance_after") @db.Decimal(14, 2)
+  status          TransactionStatus @default(COMPLETED)
+  transactionDate DateTime          @map("transaction_date")
+  reversalOfId    String?           @unique @map("reversal_of_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  createdById     String?           @map("created_by") @db.Uuid
+  updatedById     String?           @map("updated_by") @db.Uuid
+
+  account    Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  reversalOf Transaction? @relation("Reversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversedBy Transaction? @relation("Reversal")
+  createdBy  User?        @relation("TransactionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy  User?        @relation("TransactionUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([accountId, transactionDate])
+  @@index([transactionDate])
+  @@map("transactions")
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash")
+  portal     Portal
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  expiresAt  DateTime @map("expires_at")
+  lastUsedAt DateTime @default(now()) @map("last_used_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType @default(INFO)
+  title     String
+  body      String
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  actorId    String?     @map("actor_id") @db.Uuid
+  actorEmail String      @map("actor_email")
+  action     AuditAction
+  targetType String      @map("target_type")
+  targetId   String?     @map("target_id")
+  oldValue   Json?       @map("old_value")
+  newValue   Json?       @map("new_value")
+  reason     String?
+  ipAddress  String?     @map("ip_address")
+  userAgent  String?     @map("user_agent")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+model AdminAction {
+  id           String   @id @default(uuid()) @db.Uuid
+  adminId      String   @map("admin_id") @db.Uuid
+  targetUserId String?  @map("target_user_id") @db.Uuid
+  action       String
+  summary      String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  admin      User  @relation("AdminActionAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  targetUser User? @relation("AdminActionTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([targetUserId])
+  @@map("admin_actions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model LoginAttempt {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  portal    Portal
+  success   Boolean
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("login_attempts")
+}
+
+model LoginMonitorEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  sessionId       String?  @map("session_id") @db.Uuid
+  email           String
+  fullName        String   @map("full_name")
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+  ipLocationLabel String?  @map("ip_location_label")
+  latitude        Decimal? @db.Decimal(10, 7)
+  longitude       Decimal? @db.Decimal(10, 7)
+  accuracyMeters  Float?   @map("accuracy_meters")
+  locationLabel   String?  @map("location_label")
+  geoStatus       String?  @map("geo_status")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("login_monitor_events")
+}
+
+model Payee {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  name          String
+  accountNumber String   @map("account_number")
+  sortCode      String   @map("sort_code")
+  reference     String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledPayments ScheduledPayment[]
+
+  @@index([userId])
+  @@map("payees")
+}
+
+model ScheduledPayment {
+  id        String            @id @default(uuid()) @db.Uuid
+  userId    String            @map("user_id") @db.Uuid
+  payeeId   String            @map("payee_id") @db.Uuid
+  accountId String            @map("account_id") @db.Uuid
+  amount    Decimal           @db.Decimal(14, 2)
+  frequency ScheduleFrequency
+  nextDate  DateTime          @map("next_date")
+  reference String?
+  active    Boolean           @default(true)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payee Payee @relation(fields: [payeeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("scheduled_payments")
+}
+
+model DirectDebit {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  name      String
+  reference String?
+  amount    Decimal  @db.Decimal(14, 2)
+  nextDate  DateTime @map("next_date")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("direct_debits")
+}
+
+model SavingsGoal {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  name         String
+  targetAmount Decimal  @map("target_amount") @db.Decimal(14, 2)
+  savedAmount  Decimal  @default(0) @map("saved_amount") @db.Decimal(14, 2)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("savings_goals")
+}
