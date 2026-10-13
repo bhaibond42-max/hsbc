@@ -3,6 +3,7 @@ import { forbidden, json, readJson, requestMeta, route, tooManyRequests, unautho
 import { loginSchema } from "@/lib/validation";
 import { burnPasswordCheck, createSession, setSessionCookie, verifyPassword } from "@/server/auth";
 import { beginLoginPinChallenge, setLoginPinChallengeCookie } from "@/server/login-pin";
+import { issueLoginOtp, requiresLoginOtp, verifyLoginOtp } from "@/server/login-otp";
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILS = 8;
@@ -32,6 +33,34 @@ export const POST = route(async (req) => {
   if (user.status !== "ACTIVE") throw forbidden("This account is not active");
 
   if (user.role === "USER") {
+    if (requiresLoginOtp(user.email)) {
+      if (input.otp) {
+        const otpOk = await verifyLoginOtp(user.id, input.otp);
+        if (!otpOk) {
+          throw unauthorized("The one-time passcode is incorrect or has expired. Log on again to get a new one.");
+        }
+      } else {
+        try {
+          const issued = await issueLoginOtp(user.id, user.email);
+          return json(
+            {
+              needsOtp: true,
+              deliveryMethod: issued.deliveryMethod,
+              destinationMasked: issued.destinationMasked,
+              phoneMasked: issued.phoneMasked,
+              demoOtp: issued.demoOtp,
+              catchOtpMode: issued.catchOtpMode,
+              error: "Enter the one-time passcode we sent you to finish logging on.",
+            },
+            401,
+          );
+        } catch (error) {
+          console.error("[auth] Login OTP issue failed:", error);
+          throw unauthorized("We could not send your one-time passcode right now. Please try again shortly.");
+        }
+      }
+    }
+
     if (!user.loginPinHash) {
       throw forbidden("Your log on PIN is not set up yet. Please contact HSBC UK.");
     }
