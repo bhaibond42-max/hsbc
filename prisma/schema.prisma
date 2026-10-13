@@ -3,10 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // Neon on Vercel sets POSTGRES_URL_NON_POOLING; local dev uses DIRECT_URL in .env
-  directUrl = env("POSTGRES_URL_NON_POOLING")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {

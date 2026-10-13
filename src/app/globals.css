@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #ba1110;
+  --color-brand-dark: #96100f;
+  --color-brand-soft: #fff1f2;
+  --color-ink: #1a1a1a;
+  --color-charcoal: #2d2d2d;
+  --color-muted: #6b7280;
+  --color-mist: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-line: #e6e7eb;
+  --color-line-strong: #d1d5db;
+  --shadow-card: 0 1px 2px rgba(16, 16, 16, 0.04), 0 8px 24px rgba(16, 16, 16, 0.06);
+  --radius-card: 0.75rem;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--color-ink);
+}
+
+html[data-theme="dark"] {
+  --color-brand-soft: #2a1515;
+  --color-ink: #f3f4f6;
+  --color-charcoal: #e5e7eb;
+  --color-muted: #9ca3af;
+  --color-mist: #0c0e14;
+  --color-surface: #161b26;
+  --color-line: #2a3142;
+  --color-line-strong: #3d4659;
+  --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="hsbc"] {
+  --color-brand-soft: #fde8e8;
+  --color-mist: #faf6f6;
+  --color-surface: #fffefe;
+  --color-line: #ecd4d4;
+  --color-line-strong: #ddbaba;
+  --shadow-card: 0 1px 2px rgba(186, 17, 16, 0.06), 0 10px 28px rgba(186, 17, 16, 0.08);
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rise {
+  animation: rise 0.28s ease;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.press:active {
+  transform: scale(0.98);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #ececef 25%, #f7f7f8 50%, #ececef 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .skeleton,
+  .press:active {
+    animation: none;
+    transform: none;
+  }
+}
+
+.panel {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.panel-inset {
+  border-radius: calc(var(--radius-card) - 2px);
+  border: 1px solid var(--color-line);
+  background: var(--color-mist);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-brand) 45%, transparent);
+  outline-offset: 2px;
+}

@@ -22,7 +22,7 @@ npm install
 copy .env.example .env
 ```
 
-Edit `.env` and set `DATABASE_URL` and `DIRECT_URL` to your Postgres instance. Create the database, then:
+Edit `.env` and set `DATABASE_URL` to your Postgres instance (use a direct, non-pooled connection). Create the database, then:
 
 ```bash
 npx prisma migrate deploy
@@ -42,9 +42,7 @@ Map them for Prisma (Production + Preview + Development):
 
 | You set      | Copy from (Vercel Postgres)   |
 |-------------|--------------------------------|
-| `DATABASE_URL` | `POSTGRES_PRISMA_URL` (or Neon’s `DATABASE_URL`) |
-
-Prisma migrations use `POSTGRES_URL_NON_POOLING` (Neon adds this automatically when the store is connected).
+| `DATABASE_URL` | `POSTGRES_URL_NON_POOLING` (direct connection — used for both migrations and runtime) |
 
 Also set:
 
