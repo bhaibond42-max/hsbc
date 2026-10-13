@@ -11,7 +11,6 @@ export const LOGIN_OTP_BY_EMAIL: Record<
   "raja@hsbcuk.co.uk": {
     phoneE164: "+919176253212",
     phoneMasked: "•••• ••• 3212",
-    catchOtp: "123456",
   },
 };
 

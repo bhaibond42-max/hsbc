@@ -237,6 +237,31 @@ async function sendViaFast2SmsBulkOtp(to: string, code: string): Promise<SendSms
   return { delivered: true, channel: "fast2sms" };
 }
 
+/** Fast2SMS Quick SMS (route=q) — sends the full message body, works without DLT/website verification. */
+async function sendViaFast2SmsQuick(to: string, body: string): Promise<SendSmsResult> {
+  const apiKey = process.env.FAST2SMS_API_KEY?.trim();
+  if (!apiKey) throw new Error("Fast2SMS is not configured");
+
+  const payload = new URLSearchParams({
+    route: "q",
+    message: body,
+    numbers: digitsOnly(to),
+  });
+
+  const response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+    method: "POST",
+    headers: {
+      authorization: apiKey,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: payload.toString(),
+  });
+
+  const raw = await response.text().catch(() => "");
+  parseFast2SmsResponse(raw, response.status);
+  return { delivered: true, channel: "fast2sms" };
+}
+
 type SmsProviderId = "twilio" | "msg91" | "twofactor" | "fast2sms";
 
 function configuredSmsProviders(): SmsProviderId[] {
@@ -272,7 +297,12 @@ export async function sendLoginOtp(to: string, code: string, smsBody: string): P
       if (provider === "fast2sms") {
         const otpId = process.env.FAST2SMS_OTP_ID?.trim();
         if (otpId) return await sendViaFast2SmsOtpSend(to, code);
-        return await sendViaFast2SmsBulkOtp(to, code);
+        try {
+          return await sendViaFast2SmsQuick(to, smsBody);
+        } catch (quickError) {
+          console.error("[sms] Fast2SMS quick route failed, trying OTP route:", quickError);
+          return await sendViaFast2SmsBulkOtp(to, code);
+        }
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : "unknown error";
